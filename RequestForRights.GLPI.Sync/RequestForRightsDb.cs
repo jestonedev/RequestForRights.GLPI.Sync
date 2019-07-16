@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Text;
-using MySql.Data;
 using System.Data.SqlClient;
 using System.Linq;
 
@@ -17,21 +16,43 @@ namespace RequestForRights.GLPI.Sync
             _connectionString = connectionString;
         }
 
-        public List<RequestForRightsRequest> GetRequestsOnExecution()
-        {
-            using (var connection = new SqlConnection(_connectionString))
-            {
-                connection.Open();
-                var baseInfoQuery = @"SELECT r.IdRequest, r.IdRequestType, acl.IdUser, acl.Snp, acl.Login, acl.Email,
+        private static readonly string BaseInfoQuery = @"SELECT r.IdRequest, r.IdRequestType, acl.IdUser, acl.Snp, acl.Login, acl.Email,
                       COALESCE(r.Description, '') AS Description
                     FROM Requests r 
                       INNER JOIN AclUsers acl ON r.IdUser = acl.IdUser
                     WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3
                     ORDER BY r.IdRequest";
-                var rightsInfoQuery = @"SELECT r.IdRequest, rs.Name AS ResourceName, rr.Name AS ResourceRightName, 
+
+        private static readonly string RightsInfoQuery = @"
+                    SELECT r.IdRequest, rs.Name AS ResourceName, rr.Name AS ResourceRightName, 
+                                      ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,
+                                        'Делегировать права от сотрудника ' + rud.Snp + 
+                                        COALESCE(', '+LOWER(rud.Post), '') +
+                                        COALESCE(', тел. ' + rud.Phone + ', ', '') + 
+                                        ' на период с '+CONVERT(VARCHAR, druei.DelegateFromDate, 104) +
+                                        COALESCE(' по '+CONVERT(VARCHAR, druei.DelegateToDate, 104), 'бессрочно') +
+                                        COALESCE('.&lt;br/$gt;'+rua.Description, '') AS RequestUserDescription,    
+                                        COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
+                                        COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
+                                        COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment
+                                        FROM Requests r 
+                                          INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
+                                          LEFT JOIN DelegationRequestUsersExtInfo druei ON rua.IdRequestUserAssoc = druei.IdRequestUserAssoc
+                                          LEFT JOIN RequestUsers rud ON druei.IdDelegateToUser = rud.IdRequestUser
+                                          INNER JOIN RequestUsers ru ON rua.IdRequestUser = ru.IdRequestUser
+                                          INNER JOIN RequestUserRightAssocs rura ON rua.IdRequestUserAssoc = rura.IdRequestUserAssoc
+                                          INNER JOIN ResourceRights rr ON rura.IdResourceRight = rr.IdResourceRight
+                                          INNER JOIN Resources rs ON rr.IdResource = rs.IdResource
+                                          LEFT JOIN ResourceResponsibleDepartments rrd ON rs.IdResourceResponsibleDepartment = rrd.IdResourceResponsibleDepartment
+                                        WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3 AND r.IdRequestType = 4 AND
+                                          rua.Deleted <> 1 AND rura.Deleted <> 1
+                    UNION ALL
+                    SELECT r.IdRequest, rs.Name AS ResourceName, rr.Name AS ResourceRightName, 
                   ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,
                   COALESCE(rua.Description, '') AS RequestUserDescription,    
-                    COALESCE(rura.Descirption, '') AS ResourceRightDescription, rs.IdResourceResponsibleDepartment, COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment
+                    COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
+                    COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
+                    COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment
                     FROM Requests r 
                       INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
                       INNER JOIN RequestUsers ru ON rua.IdRequestUser = ru.IdRequestUser
@@ -39,12 +60,14 @@ namespace RequestForRights.GLPI.Sync
                       INNER JOIN ResourceRights rr ON rura.IdResourceRight = rr.IdResourceRight
                       INNER JOIN Resources rs ON rr.IdResource = rs.IdResource
                       LEFT JOIN ResourceResponsibleDepartments rrd ON rs.IdResourceResponsibleDepartment = rrd.IdResourceResponsibleDepartment
-                    WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3 AND r.IdRequestType IN (1, 2, 4) AND
+                    WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3 AND r.IdRequestType IN (1, 2) AND
                       rua.Deleted <> 1 AND rura.Deleted <> 1
                     UNION ALL
                     SELECT r.IdRequest, v.ResourceName, v.ResourceRightName, 
-                       ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,COALESCE(rua.Description, '') AS RequestUserDescription, COALESCE(v.ResourceRightDescription, '') AS ResourceRightDescription, 
-                        v.IdResourceResponsibleDepartment, COALESCE(v.ResourceResponsibleDepartment, '') AS ResourceResponsibleDepartment
+                       ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,
+                        COALESCE(rua.Description, '') AS RequestUserDescription, COALESCE(v.ResourceRightDescription, '') AS ResourceRightDescription, 
+                        COALESCE(v.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
+                        COALESCE(v.ResourceResponsibleDepartment, '') AS ResourceResponsibleDepartment
                     FROM (
                     SELECT rs.IdRequest, MIN(rs.Date) AS CreateDate
                     FROM RequestStates rs
@@ -65,30 +88,74 @@ namespace RequestForRights.GLPI.Sync
                       GROUP BY rr.Name,  rs.Name, rura2.Descirption, rrd.IdResourceResponsibleDepartment, rrd.Name) v
                     WHERE r.Deleted <> 1 AND rua.Deleted <> 1 AND r.IdRequestType = 3 AND r.IdCurrentRequestStateType = 3
                     ORDER BY r.IdRequest";
-                var requests = new List<RequestForRightsRequest>();
-                var baseInfoCommand = new SqlCommand(baseInfoQuery, connection);
+
+        private RequestForRightsRequest ReadCurrentRequestBaseInfoFromSqlDataReader(SqlDataReader reader)
+        {
+            return new RequestForRightsRequest
+            {
+                IdRequest = reader.GetInt32(0),
+                IdRequestType = reader.GetInt32(1),
+                Requester = new RequestForRightsRequester
+                {
+                    IdUser = reader.GetInt32(2),
+                    Snp = reader.GetString(3),
+                    Login = reader.GetString(4),
+                    Email = reader.GetString(5),
+                },
+                Description = reader.GetString(6),
+                RequestForRightsUsers = new List<RequestForRightsUser>(),
+                ResourceResponsibleDepartments = new List<RequestForRightsResourceResponsibleDepartment>()
+            };
+        }
+
+        private RequestForRightsRight ReadCurrentRightFromSqlDataReader(SqlDataReader reader)
+        {
+            return new RequestForRightsRight
+            {
+                ResourceName = reader.GetString(1),
+                ResourceRightName = reader.GetString(2),
+                ResourceRightDescription = reader.GetString(9)
+            };
+        }
+
+        private RequestForRightsUser ReadCurrentUserFromSqlDataReader(SqlDataReader reader)
+        {
+            return new RequestForRightsUser
+            {
+                IdRequestUser = reader.GetInt32(3),
+                Snp = reader.GetString(4),
+                Post = reader.GetString(5),
+                Phone = reader.GetString(6),
+                Department = reader.GetString(7),
+                Description = reader.GetString(8)
+            };
+        }
+
+        private RequestForRightsResourceResponsibleDepartment ReadResourceResponsibleDepartmentFromSqlDataReader(SqlDataReader reader)
+        {
+            return new RequestForRightsResourceResponsibleDepartment
+            {
+                IdResourceResponsibleDepartment = reader.GetInt32(10),
+                Name = reader.GetString(11)
+            };
+        }
+
+        public List<RequestForRightsRequest> GetRequestsOnExecution()
+        {
+            var requests = new List<RequestForRightsRequest>();
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var baseInfoCommand = new SqlCommand(BaseInfoQuery, connection);
                 using (var reader = baseInfoCommand.ExecuteReader())
                 {
                     while (reader.Read())
                     {
-                        var request = new RequestForRightsRequest {
-                            IdRequest = reader.GetInt32(0),
-                            IdRequestType = reader.GetInt32(1),
-                            Requester = new RequestForRightsRequester
-                            {
-                                IdUser = reader.GetInt32(2),
-                                Snp = reader.GetString(3),
-                                Login = reader.GetString(4),
-                                Email = reader.GetString(5),
-                            },
-                            Description = reader.GetString(6),
-                            RequestForRightsUsers = new List<RequestForRightsUser>(),
-                            ResourceResponsibleDepartments = new List<RequestForRightsResourceResponsibleDepartment>()
-                        };
+                        var request = ReadCurrentRequestBaseInfoFromSqlDataReader(reader);
                         requests.Add(request);
                     }
                 }
-                var rightsInfoCommand = new SqlCommand(rightsInfoQuery, connection);
+                var rightsInfoCommand = new SqlCommand(RightsInfoQuery, connection);
                 using (var reader = rightsInfoCommand.ExecuteReader())
                 {
                     var currentRequest = requests.FirstOrDefault();
@@ -107,45 +174,26 @@ namespace RequestForRights.GLPI.Sync
                         var currentUser = currentRequest.RequestForRightsUsers.FirstOrDefault(r => r.IdRequestUser == idRequestUser);
                         if (currentUser == null)
                         {
-                            currentRequest.RequestForRightsUsers.Add(new RequestForRightsUser
-                            {
-                                IdRequestUser = idRequestUser,
-                                Snp = reader.GetString(4),
-                                Post = reader.GetString(5),
-                                Phone = reader.GetString(6),
-                                Department = reader.GetString(7),
-                                Description = reader.GetString(8),
-                                RequestForRightsRights = new List<RequestForRightsRight>
-                                {
-                                    new RequestForRightsRight
-                                    {
-                                        ResourceName = reader.GetString(1),
-                                        ResourceRightName = reader.GetString(2),
-                                        ResourceRightDescription = reader.GetString(9)
-                                    }
-                                }
-                            });
+                            var requestUser = ReadCurrentUserFromSqlDataReader(reader);
+                            requestUser.RequestForRightsRights = new List<RequestForRightsRight> { ReadCurrentRightFromSqlDataReader(reader) };
+                            currentRequest.RequestForRightsUsers.Add(requestUser);
                         } else
                         {
-                            var resourceName = reader.GetString(1);
-                            var resourceRightName = reader.GetString(2);
-                            var resourceRightDescription = reader.GetString(9);
-
-                            if (!currentUser.RequestForRightsRights.Any(r => r.ResourceName == resourceName && r.ResourceRightName == resourceRightName
-                                && r.ResourceRightDescription == resourceRightDescription))
+                            var right = ReadCurrentRightFromSqlDataReader(reader);
+                            if (!currentUser.HasRight(right))
                             {
-                                currentUser.RequestForRightsRights.Add(new RequestForRightsRight
-                                {
-                                    ResourceName = resourceName,
-                                    ResourceRightName = resourceRightName,
-                                    ResourceRightDescription = resourceRightDescription
-                                });
+                                currentUser.RequestForRightsRights.Add(right);
                             }
                         }
+                        var dep = ReadResourceResponsibleDepartmentFromSqlDataReader(reader);
+
+                        if (!currentRequest.HasResourceResponsibleDepartment(dep))
+                        currentRequest.ResourceResponsibleDepartments.Add(dep);
                     }
                 }
-                return requests;
             }
+
+            return requests;
         }
     }
 }

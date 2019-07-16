@@ -8,7 +8,10 @@ namespace RequestForRights.GLPI.Sync
         static void Main(string[] args)
         {
             var rqrightsDb = new RequestForRightsDb(ConfigurationManager.AppSettings["rqrightsConnectionString"]);
-            var rqrightsRequest = rqrightsDb.GetRequestsOnExecution();
+            var rqrightsRequests = rqrightsDb.GetRequestsOnExecution();
+            var glpiDb = new GlpiDb(ConfigurationManager.AppSettings["glpiConnectionString"]);
+            var glpiInsertedRequestsIds = glpiDb.InsertRequests(glpiDb.FilterExistsRequests(rqrightsRequests));
+            var glpiInsertedRequests = glpiDb.GetRequests(glpiInsertedRequestsIds);
         }
     }
 }
