@@ -1,7 +1,10 @@
 ﻿namespace RequestForRights.GLPI.Sync
 {
-    internal class GlpiRequestExecutor
+    public class GlpiRequestExecutor
     {
         public string Login { get; set; }
+        public string Name { get; set; }
+        public string Content { get; set; }
+        public int Type { get; set; }
     }
 }

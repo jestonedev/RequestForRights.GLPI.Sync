@@ -42,6 +42,39 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string InsertTicketExecutorGroupsQueryTemplate = @"INSERT INTO glpi_groups_tickets (tickets_id, groups_id, type)
                 VALUES (@ticket_id, @group_id, 2);";
 
+        private static readonly string GetTicketsQueryTemplate = @"SELECT gt.id AS id_glpi_ticket, ugrra.id_rqrights_request,
+                      IFNULL(gt.name, '') AS name, IFNULL(gt.content, '') AS content, 
+                      IFNULL(gt.date, gt.date_creation) AS date, gi.completename AS category, TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS inititator,
+                      IFNULL(GROUP_CONCAT(gg.completename SEPARATOR ', '), '') AS executors_groups
+                    FROM glpi_tickets gt
+                    INNER JOIN udt_glpi_rqrights_request_assoc ugrra ON gt.id = ugrra.id_glpi_ticket
+                      LEFT JOIN glpi_tickets_users gtu ON gt.id = gtu.tickets_id
+                      LEFT JOIN glpi_users gu ON gtu.users_id = gu.id
+                      LEFT JOIN glpi_groups_tickets ggt ON gt.id = ggt.tickets_id
+                      LEFT JOIN glpi_groups gg ON ggt.groups_id = gg.id
+                      INNER JOIN glpi_itilcategories gi ON gt.itilcategories_id = gi.id
+                    WHERE gtu.type = 1 AND ggt.type = 2 {0}
+                    GROUP BY gt.id";
+
+        private static readonly string GetTicketManagersQueryTemplate = @"SELECT ggt.tickets_id, IFNULL(CONCAT('PWR\\', gu.name), '') AS login, 
+              TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS snp, IFNULL(gum.email, '') AS email
+            FROM glpi_groups_tickets ggt
+              INNER JOIN glpi_groups_users ggu ON ggt.groups_id = ggu.groups_id
+              INNER JOIN glpi_users gu ON ggu.users_id = gu.id
+              INNER JOIN glpi_useremails gum ON gu.id = gum.users_id
+            WHERE ggt.tickets_id IN ({0}) AND ggt.type = 2 AND ggu.is_manager = 1 AND 
+                  gum.is_default = 1 AND gu.is_deleted = 0 AND gu.is_active = 1";
+
+        private static readonly string GetTicketExecutorsQueryTemplate = @"SELECT gt.tickets_id, IFNULL(gt.content, '') AS content, 
+             IFNULL(CONCAT('PWR\\',gu.name), '') AS login, 
+              TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS name, 1 AS executor_type
+            FROM glpi_tickettasks gt INNER JOIN glpi_users gu ON gt.users_id_tech = gu.id
+            WHERE gt.tickets_id IN ({0})
+            UNION ALL
+            SELECT gt.tickets_id, gt.content, '', IFNULL(gg.completename, '') AS completename, 2 AS executor_type
+            FROM glpi_tickettasks gt INNER JOIN glpi_groups gg ON gt.groups_id_tech = gg.id
+            WHERE gt.tickets_id IN ({0})";
+
         public GlpiDb(string connectionString)
         {
             _connectionString = connectionString;
@@ -133,13 +166,127 @@ namespace RequestForRights.GLPI.Sync
                 case 4: return 48;
                 case 5: return 37;
                 case 6: return 47;
-                default: throw new ApplicationException("ConvertRqrightsRespDepartmentToExecutorGroup: Неизвестный отдел сопровождения");
+                default: throw new ApplicationException("GlpiDb.ConvertRqrightsRespDepartmentToExecutorGroup: Неизвестный отдел сопровождения");
             }
         }
 
-        public List<GlpiRequest> GetRequests(List<long> ids = null, List<long> requesttypesIds = null, DateTime? createionDate = null)
+        public List<GlpiRequest> GetRequests(List<long> ids = null, List<int> statusIds = null, DateTime? createionDate = null)
         {
-            return null;
+            using (var connection = new MySqlConnection(_connectionString))
+            {
+                connection.Open();
+                var where = GetRequestsBuildWhere(ids, statusIds, createionDate);
+                var getTicketCommand = new MySqlCommand(string.Format(GetTicketsQueryTemplate, where), connection);
+                var reader = getTicketCommand.ExecuteReader();
+                var requests = new List<GlpiRequest>();
+                while (reader.Read())
+                {
+                    var request = ReadCurrentRequestBaseInfoFromMySqlDataReader(reader);
+                    requests.Add(request);
+                }
+                reader.Close();
+                ids = requests.Select(r => (long)r.IdGlpiRequest).ToList();
+
+                if (ids.Count == 0) return requests;
+                var idsString = ids.Select(r => r.ToString()).Aggregate((v, acc) => v + ", " + acc);
+
+
+                var getTicketManagersCommand = new MySqlCommand(string.Format(GetTicketManagersQueryTemplate, idsString), connection);
+                reader = getTicketManagersCommand.ExecuteReader();
+                GlpiRequest currentTicket = null;
+                while (reader.Read())
+                {
+                    var idRequest = reader.GetInt32(0);
+                    if (currentTicket == null || currentTicket.IdGlpiRequest != idRequest)
+                    {
+                        currentTicket = requests.FirstOrDefault(r => r.IdGlpiRequest == idRequest);
+                    }
+                    if (currentTicket == null)
+                    {
+                        throw new ApplicationException("GlpiDb.GetRequests: Несогласованность данных в запросах");
+                    }
+                    currentTicket.Managers.Add(ReadCurrentManagerFromMySqlDataReader(reader));
+                }
+                reader.Close();
+                currentTicket.Managers = currentTicket.Managers.Distinct().ToList();
+
+                var getTicketExecutorsCommand = new MySqlCommand(string.Format(GetTicketExecutorsQueryTemplate, idsString), connection);
+                reader = getTicketExecutorsCommand.ExecuteReader();
+                currentTicket = null;
+                while (reader.Read())
+                {
+                    var idRequest = reader.GetInt32(0);
+                    if (currentTicket == null || currentTicket.IdGlpiRequest != idRequest)
+                    {
+                        currentTicket = requests.FirstOrDefault(r => r.IdGlpiRequest == idRequest);
+                    }
+                    if (currentTicket == null)
+                    {
+                        throw new ApplicationException("GlpiDb.GetRequests: Несогласованность данных в запросах");
+                    }
+                    currentTicket.Executors.Add(ReadCurrentExecutorFromMySqlDataReader(reader));
+                }
+                reader.Close();
+
+                return requests;
+            }
+        }
+
+        private GlpiRequestManager ReadCurrentManagerFromMySqlDataReader(MySqlDataReader reader)
+        {
+            return new GlpiRequestManager
+            {
+                Login = reader.GetString(1),
+                Snp = reader.GetString(2),
+                Email = reader.GetString(3)
+            };
+        }
+
+        private GlpiRequestExecutor ReadCurrentExecutorFromMySqlDataReader(MySqlDataReader reader)
+        {
+            return new GlpiRequestExecutor
+            {
+                Content = reader.GetString(1),
+                Login = reader.GetString(2),
+                Name = reader.GetString(3),
+                Type = reader.GetInt32(4)
+            };
+        }
+
+        private GlpiRequest ReadCurrentRequestBaseInfoFromMySqlDataReader(MySqlDataReader reader)
+        {
+            return new GlpiRequest
+            {
+                IdGlpiRequest = reader.GetInt32(0),
+                IdRequestForRightsRequest = reader.GetInt32(1),
+                Name = reader.GetString(2),
+                Content = reader.GetString(3),
+                OpenDate = reader.GetDateTime(4),
+                Cateogry = reader.GetString(5),
+                Initiator = reader.GetString(6),
+                ExecutorsGroups = reader.GetString(7),
+                Executors = new List<GlpiRequestExecutor>(),
+                Managers = new List<GlpiRequestManager>()
+            };
+        }
+
+        private string GetRequestsBuildWhere(List<long> ids = null, List<int> statusIds = null, DateTime? createionDate = null)
+        {
+            var where = "";
+            if (ids != null && ids.Count > 0)
+            {
+                where += " AND gt.id IN (" + ids.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+            }
+            if (statusIds != null && statusIds.Count > 0)
+            {
+                where += " AND status IN (" + statusIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+            }
+            if (createionDate != null)
+            {
+                where += " AND gt.date_creation > STR_TO_DATE('" + createionDate.Value.ToString("dd.MM.yyyy hh:mm:ss") + "', '%d.%m.%Y %H:%i:%s')";
+            }
+            if (string.IsNullOrEmpty(where)) return "AND 1=0";
+            return where;
         }
     }
 }

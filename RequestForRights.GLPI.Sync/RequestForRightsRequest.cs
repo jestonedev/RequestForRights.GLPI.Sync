@@ -45,8 +45,6 @@ namespace RequestForRights.GLPI.Sync
                     description += "&lt;br/&gt;";
                 }
             }
-
-            description += "&lt;br/&gt;";
             description += "&lt;a href=&quot;http://rqrights/Request/Detail/"+IdRequest.ToString()+ "&quot;&gt;Заявка в АИС &quot;Реестр информационных систем и прав доступа к ним&quot;&lt;/a&gt;";
 
             description += "&lt;/p&gt;";

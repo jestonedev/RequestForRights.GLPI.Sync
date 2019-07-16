@@ -1,11 +1,18 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace RequestForRights.GLPI.Sync
 {
-    internal class GlpiRequest
+    public class GlpiRequest
     {
         public int IdGlpiRequest { get; set; }
         public int IdRequestForRightsRequest { get; set; }
+        public string Name { get; set; }
+        public string Content { get; set; }
+        public DateTime OpenDate { get; set; }
+        public string Cateogry { get; set; }
+        public string Initiator { get; set; }
+        public string ExecutorsGroups { get; set; }
         public List<GlpiRequestExecutor> Executors { get; set; }
         public List<GlpiRequestManager> Managers { get; set; }
     }

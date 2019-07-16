@@ -168,7 +168,7 @@ namespace RequestForRights.GLPI.Sync
                         }
                         if (currentRequest == null)
                         {
-                            throw new ApplicationException("GetRequestsOnExecution: Несогласованность данных в запросах");
+                            throw new ApplicationException("RequestForRightsDb.GetRequestsOnExecution: Несогласованность данных в запросах");
                         }
                         var idRequestUser = reader.GetInt32(3);
                         var currentUser = currentRequest.RequestForRightsUsers.FirstOrDefault(r => r.IdRequestUser == idRequestUser);
