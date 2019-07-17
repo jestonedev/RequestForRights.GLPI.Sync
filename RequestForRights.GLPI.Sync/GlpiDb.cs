@@ -83,7 +83,7 @@ namespace RequestForRights.GLPI.Sync
         private static string PrepareCheckExistsRequestsQuery(List<RequestForRightsRequest> requests)
         {
             return string.Format(CheckExistsRequestsQueryTemplate,
-                        requests.Select(r => r.IdRequest.ToString()).Aggregate((v, acc) => v + ',' + acc));
+                        requests.Count > 0 ? requests.Select(r => r.IdRequest.ToString()).Aggregate((v, acc) => v + ',' + acc) : "");
         }
 
         public List<RequestForRightsRequest> FilterExistsRequests(List<RequestForRightsRequest> requests)
@@ -273,17 +273,18 @@ namespace RequestForRights.GLPI.Sync
         private string GetRequestsBuildWhere(List<long> glpiIds = null, List<long> rqRightsIds = null, List<int> statusIds = null, DateTime? createionDate = null)
         {
             var where = "";
-            if (glpiIds != null && glpiIds.Count > 0)
+            if (glpiIds != null)
             {
-                where += " AND gt.id IN (" + glpiIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+                where += " AND gt.id IN (" + (glpiIds.Count > 0 ? glpiIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) : "0") + ")";
             }
-            if (rqRightsIds != null && rqRightsIds.Count > 0)
+            if (rqRightsIds != null)
             {
-                where += " AND ugrra.id_rqrights_request IN (" + rqRightsIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+                where += " AND ugrra.id_rqrights_request IN (" + 
+                    (rqRightsIds.Count > 0 ? rqRightsIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) : "0") + ")";
             }
-            if (statusIds != null && statusIds.Count > 0)
+            if (statusIds != null)
             {
-                where += " AND status IN (" + statusIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+                where += " AND status IN (" + (statusIds.Count > 0 ? statusIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) : "0") + ")";
             }
             if (createionDate != null)
             {
