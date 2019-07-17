@@ -89,6 +89,9 @@ namespace RequestForRights.GLPI.Sync
                     WHERE r.Deleted <> 1 AND rua.Deleted <> 1 AND r.IdRequestType = 3 AND r.IdCurrentRequestStateType = 3
                     ORDER BY r.IdRequest";
 
+        private static readonly string UpdateRequestStateQueryTemplate = @"INSERT INTO RequestStates(IdRequestStateType, IdRequest, Date, Deleted)
+            VALUES(@idRequestStateType, @idRequest, CURRENT_TIMESTAMP, 0);";
+
         private RequestForRightsRequest ReadCurrentRequestBaseInfoFromSqlDataReader(SqlDataReader reader)
         {
             return new RequestForRightsRequest
@@ -194,6 +197,23 @@ namespace RequestForRights.GLPI.Sync
             }
 
             return requests;
+        }
+
+        public void UpdateRequestsState(List<int> idRequests, int idRequestStateType)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var transaction = connection.BeginTransaction();
+                foreach (var idRequest in idRequests)
+                {
+                    var command = new SqlCommand(UpdateRequestStateQueryTemplate, connection, transaction);
+                    command.Parameters.AddWithValue("idRequestStateType", idRequestStateType);
+                    command.Parameters.AddWithValue("idRequest", idRequest);
+                    command.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }
         }
     }
 }

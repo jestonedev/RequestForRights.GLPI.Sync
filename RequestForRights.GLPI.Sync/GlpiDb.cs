@@ -115,19 +115,19 @@ namespace RequestForRights.GLPI.Sync
                     {
                         foreach (var request in requests)
                         {
-                            var insertTicketCommand = new MySqlCommand(InsertTicketQueryTemplate, connection);
+                            var insertTicketCommand = new MySqlCommand(InsertTicketQueryTemplate, connection, transaction);
                             insertTicketCommand.Parameters.AddWithValue("@title", request.Description.Replace("\r\n", " "));
                             insertTicketCommand.Parameters.AddWithValue("@description", request.GetFullDescription());
                             insertTicketCommand.Parameters.AddWithValue("@ticket_category", request.IdRequestType + 114 /*В glpi id с 115 до 118, в rqrights id с 1 до 4*/);
                             insertTicketCommand.ExecuteNonQuery();
                             var lastInsertedId = insertTicketCommand.LastInsertedId;
 
-                            var insertGlpiRqrightsIdsAssocCommand = new MySqlCommand(InsertGlpiRqrightsIdsAssocQueryTemplate, connection);
+                            var insertGlpiRqrightsIdsAssocCommand = new MySqlCommand(InsertGlpiRqrightsIdsAssocQueryTemplate, connection, transaction);
                             insertGlpiRqrightsIdsAssocCommand.Parameters.AddWithValue("@id_glpi_ticket", lastInsertedId);
                             insertGlpiRqrightsIdsAssocCommand.Parameters.AddWithValue("@id_rqrights_request", request.IdRequest);
                             insertGlpiRqrightsIdsAssocCommand.ExecuteNonQuery();
 
-                            var insertTicketInitiatorCommand = new MySqlCommand(InsertTicketInitiatorQueryTemplate, connection);
+                            var insertTicketInitiatorCommand = new MySqlCommand(InsertTicketInitiatorQueryTemplate, connection, transaction);
                             insertTicketInitiatorCommand.Parameters.AddWithValue("@ticket_id", lastInsertedId);
                             insertTicketInitiatorCommand.Parameters.AddWithValue("@login", 
                                 request.Requester.Login.Split('\\')?[1]?.ToLowerInvariant() ?? 
@@ -136,7 +136,7 @@ namespace RequestForRights.GLPI.Sync
 
                             foreach(var dep in request.ResourceResponsibleDepartments)
                             {
-                                var insertTicketExecutorGroups = new MySqlCommand(InsertTicketExecutorGroupsQueryTemplate, connection);
+                                var insertTicketExecutorGroups = new MySqlCommand(InsertTicketExecutorGroupsQueryTemplate, connection, transaction);
                                 insertTicketExecutorGroups.Parameters.AddWithValue("@ticket_id", lastInsertedId);
                                 insertTicketExecutorGroups.Parameters.AddWithValue("@group_id",
                                     ConvertRqrightsRespDepartmentToExecutorGroup(dep.IdResourceResponsibleDepartment));
@@ -170,12 +170,12 @@ namespace RequestForRights.GLPI.Sync
             }
         }
 
-        public List<GlpiRequest> GetRequests(List<long> ids = null, List<int> statusIds = null, DateTime? createionDate = null)
+        public List<GlpiRequest> GetRequests(List<long> glpiIds = null, List<long> rqrightsIds = null, List<int> statusIds = null, DateTime? createionDate = null)
         {
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                var where = GetRequestsBuildWhere(ids, statusIds, createionDate);
+                var where = GetRequestsBuildWhere(glpiIds, rqrightsIds, statusIds, createionDate);
                 var getTicketCommand = new MySqlCommand(string.Format(GetTicketsQueryTemplate, where), connection);
                 var reader = getTicketCommand.ExecuteReader();
                 var requests = new List<GlpiRequest>();
@@ -185,10 +185,10 @@ namespace RequestForRights.GLPI.Sync
                     requests.Add(request);
                 }
                 reader.Close();
-                ids = requests.Select(r => (long)r.IdGlpiRequest).ToList();
+                glpiIds = requests.Select(r => (long)r.IdGlpiRequest).ToList();
 
-                if (ids.Count == 0) return requests;
-                var idsString = ids.Select(r => r.ToString()).Aggregate((v, acc) => v + ", " + acc);
+                if (glpiIds.Count == 0) return requests;
+                var idsString = glpiIds.Select(r => r.ToString()).Aggregate((v, acc) => v + ", " + acc);
 
 
                 var getTicketManagersCommand = new MySqlCommand(string.Format(GetTicketManagersQueryTemplate, idsString), connection);
@@ -270,12 +270,16 @@ namespace RequestForRights.GLPI.Sync
             };
         }
 
-        private string GetRequestsBuildWhere(List<long> ids = null, List<int> statusIds = null, DateTime? createionDate = null)
+        private string GetRequestsBuildWhere(List<long> glpiIds = null, List<long> rqRightsIds = null, List<int> statusIds = null, DateTime? createionDate = null)
         {
             var where = "";
-            if (ids != null && ids.Count > 0)
+            if (glpiIds != null && glpiIds.Count > 0)
             {
-                where += " AND gt.id IN (" + ids.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+                where += " AND gt.id IN (" + glpiIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
+            }
+            if (rqRightsIds != null && rqRightsIds.Count > 0)
+            {
+                where += " AND ugrra.id_rqrights_request IN (" + rqRightsIds.Select(r => r.ToString()).Aggregate((v, acc) => v + "," + acc) + ")";
             }
             if (statusIds != null && statusIds.Count > 0)
             {
