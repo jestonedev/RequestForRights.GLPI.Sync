@@ -6,5 +6,6 @@
         public string Snp { get; set; }
         public string Login { get; set; }
         public string Email { get; set; }
+        public string Department { get; set; }
     }
 }

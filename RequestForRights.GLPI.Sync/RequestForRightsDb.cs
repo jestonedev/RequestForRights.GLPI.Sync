@@ -17,11 +17,14 @@ namespace RequestForRights.GLPI.Sync
         }
 
         private static readonly string BaseInfoQuery = @"SELECT r.IdRequest, r.IdRequestType, acl.IdUser, acl.Snp, acl.Login, acl.Email,
-                      COALESCE(r.Description, '') AS Description
-                    FROM Requests r 
-                      INNER JOIN AclUsers acl ON r.IdUser = acl.IdUser
-                    WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3
-                    ORDER BY r.IdRequest";
+              COALESCE(r.Description, '') AS Description, 
+              COALESCE(d1.Name, d.Name) AS Department
+            FROM Requests r 
+              INNER JOIN AclUsers acl ON r.IdUser = acl.IdUser
+              LEFT JOIN Departments d ON acl.IdDepartment = d.IdDepartment
+              LEFT JOIN Departments d1 ON d.IdParentDepartment = d1.IdDepartment
+            WHERE r.Deleted <> 1 AND r.IdCurrentRequestStateType = 3
+            ORDER BY r.IdRequest";
 
         private static readonly string RightsInfoQuery = @"
                     SELECT r.IdRequest, rs.Name AS ResourceName, rr.Name AS ResourceRightName, 
@@ -104,6 +107,7 @@ namespace RequestForRights.GLPI.Sync
                     Snp = reader.GetString(3),
                     Login = reader.GetString(4),
                     Email = reader.GetString(5),
+                    Department = reader.GetString(7)
                 },
                 Description = reader.GetString(6),
                 RequestForRightsUsers = new List<RequestForRightsUser>(),

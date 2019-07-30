@@ -20,12 +20,12 @@ namespace RequestForRights.GLPI.Sync
                   sla_waiting_duration, ola_waiting_duration, olas_id_tto, olas_id_ttr, olalevels_id_ttr, 
                   waiting_duration, close_delay_stat, solve_delay_stat, takeintoaccount_delay_stat, actiontime, 
                   is_deleted, locations_id, validation_percent, date_creation)
-                  VALUES (0, @title, NOW(), 0, 2, 0, 
+                  SELECT IFNULL((SELECT ge.id FROM glpi_entities ge WHERE ge.name = @department LIMIT 1), 0), @title, NOW(), 0, 2, 0, 
                   6, @description, 3, 3, 3, @ticket_category, 2, 
                   1, 0, 0, 0, 
                   0, 0, 0, 0, 0, 
                   0, 0, 0, 0, 0, 
-                  0, 0, 0, NOW())";
+                  0, 0, 0, NOW()";
 
         private static readonly string InsertGlpiRqrightsIdsAssocQueryTemplate = @"INSERT INTO udt_glpi_rqrights_request_assoc (
                 id_glpi_ticket, id_rqrights_request)
@@ -117,6 +117,7 @@ namespace RequestForRights.GLPI.Sync
                         {
                             var insertTicketCommand = new MySqlCommand(InsertTicketQueryTemplate, connection, transaction);
                             insertTicketCommand.Parameters.AddWithValue("@title", request.Description.Replace("\r\n", " "));
+                            insertTicketCommand.Parameters.AddWithValue("@department", request.Requester.Department);
                             insertTicketCommand.Parameters.AddWithValue("@description", request.GetFullDescription());
                             insertTicketCommand.Parameters.AddWithValue("@ticket_category", request.IdRequestType + 114 /*В glpi id с 115 до 118, в rqrights id с 1 до 4*/);
                             insertTicketCommand.ExecuteNonQuery();
