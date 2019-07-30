@@ -29,7 +29,7 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string RightsInfoQuery = @"
                     SELECT r.IdRequest, rs.Name AS ResourceName, rr.Name AS ResourceRightName, 
                                       ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,
-                                        'Делегировать права от сотрудника ' + rud.Snp + 
+                                        'Делегировать права сотруднику ' + rud.Snp + 
                                         COALESCE(', '+LOWER(rud.Post), '') +
                                         COALESCE(', тел. ' + rud.Phone + ', ', '') + 
                                         ' на период с '+CONVERT(VARCHAR, druei.DelegateFromDate, 104) +
