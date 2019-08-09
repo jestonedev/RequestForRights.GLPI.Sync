@@ -179,23 +179,30 @@ namespace RequestForRights.GLPI.Sync
                         }
                         var idRequestUser = reader.GetInt32(3);
                         var currentUser = currentRequest.RequestForRightsUsers.FirstOrDefault(r => r.IdRequestUser == idRequestUser);
+                        var currentRight = ReadCurrentRightFromSqlDataReader(reader);
                         if (currentUser == null)
                         {
                             var requestUser = ReadCurrentUserFromSqlDataReader(reader);
-                            requestUser.RequestForRightsRights = new List<RequestForRightsRight> { ReadCurrentRightFromSqlDataReader(reader) };
+                            requestUser.RequestForRightsRights = new List<RequestForRightsRight> { currentRight };
                             currentRequest.RequestForRightsUsers.Add(requestUser);
                         } else
                         {
-                            var right = ReadCurrentRightFromSqlDataReader(reader);
-                            if (!currentUser.HasRight(right))
+                            if (!currentUser.HasRight(currentRight))
                             {
-                                currentUser.RequestForRightsRights.Add(right);
+                                currentUser.RequestForRightsRights.Add(currentRight);
                             }
                         }
                         var dep = ReadResourceResponsibleDepartmentFromSqlDataReader(reader);
 
                         if (!currentRequest.HasResourceResponsibleDepartment(dep))
-                        currentRequest.ResourceResponsibleDepartments.Add(dep);
+                            currentRequest.ResourceResponsibleDepartments.Add(dep);
+                        if (currentRight.ResourceName == "Учетная запись пользователя")
+                        {
+                            currentRequest.ResourceResponsibleDepartments.Add(new RequestForRightsResourceResponsibleDepartment
+                            {
+                                IdResourceResponsibleDepartment = 3
+                            });
+                        }
                     }
                 }
             }

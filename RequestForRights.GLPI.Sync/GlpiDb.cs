@@ -163,7 +163,7 @@ namespace RequestForRights.GLPI.Sync
             {
                 case 1: return 12;
                 case 2: return 46;
-                case 3: return 34;
+                case 3: return 52;
                 case 4: return 48;
                 case 5: return 37;
                 case 6: return 47;
