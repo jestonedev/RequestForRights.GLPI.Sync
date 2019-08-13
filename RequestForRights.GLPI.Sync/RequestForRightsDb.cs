@@ -196,12 +196,14 @@ namespace RequestForRights.GLPI.Sync
 
                         if (!currentRequest.HasResourceResponsibleDepartment(dep))
                             currentRequest.ResourceResponsibleDepartments.Add(dep);
-                        if (currentRight.ResourceName == "Учетная запись пользователя")
-                        {
-                            currentRequest.ResourceResponsibleDepartments.Add(new RequestForRightsResourceResponsibleDepartment
+                        var cmtDep = new RequestForRightsResourceResponsibleDepartment
                             {
-                                IdResourceResponsibleDepartment = 3
-                            });
+                            IdResourceResponsibleDepartment = 3
+                            };
+                        if (currentRight.ResourceName == "Учетная запись пользователя" &&
+                            currentRequest.HasResourceResponsibleDepartment(cmtDep))
+                        {
+                            currentRequest.ResourceResponsibleDepartments.Add(cmtDep);
                         }
                     }
                 }
