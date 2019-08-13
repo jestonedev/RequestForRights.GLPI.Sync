@@ -95,6 +95,34 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string UpdateRequestStateQueryTemplate = @"INSERT INTO RequestStates(IdRequestStateType, IdRequest, Date, Deleted)
             VALUES(@idRequestStateType, @idRequest, CURRENT_TIMESTAMP, 0);";
 
+        private static readonly string DeleteRequestExecutorsQueryTemplate = @"DELETE FROM RequestExecutors WHERE IdRequest = @IdRequest";
+        private static readonly string InsertRequestExecutorQueryTemplate = @"INSERT INTO RequestExecutors(IdRequest, Login) VALUES(@IdRequest, @Login)";
+
+        public void UpdateExecutors(List<GlpiRequest> glpiRequests)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var transaction = connection.BeginTransaction();
+                foreach (var request in glpiRequests)
+                {
+                    var idRequest = request.IdRequestForRightsRequest;
+                    var executors = request.Executors.Where(r => r.Type == 1);
+                    var deleteRequestStateQuery = new SqlCommand(DeleteRequestExecutorsQueryTemplate, connection, transaction);
+                    deleteRequestStateQuery.Parameters.AddWithValue("@IdRequest", idRequest);
+                    deleteRequestStateQuery.ExecuteNonQuery();
+                    foreach(var executor in executors)
+                    {
+                        var insertRequestStateQuery = new SqlCommand(InsertRequestExecutorQueryTemplate, connection, transaction);
+                        insertRequestStateQuery.Parameters.AddWithValue("@IdRequest", idRequest);
+                        insertRequestStateQuery.Parameters.AddWithValue("@Login", executor.Login);
+                        insertRequestStateQuery.ExecuteNonQuery();
+                    }
+                }
+                transaction.Commit();
+            }
+        }
+
         private RequestForRightsRequest ReadCurrentRequestBaseInfoFromSqlDataReader(SqlDataReader reader)
         {
             return new RequestForRightsRequest

@@ -32,6 +32,8 @@ namespace RequestForRights.GLPI.Sync
             var glpiCompletedRequest = glpiDb.GetRequests(null, 
                 glpiRequestsForCompleteChecking.Select(r => (long)r.IdRequest).ToList(), new List<int> { 5, 6 });
             rqrightsDb.UpdateRequestsState(glpiCompletedRequest.Select(r => r.IdRequestForRightsRequest).ToList(), 4);
+            var glpiRequests = glpiDb.GetRequests(createionDate: DateTime.Now.AddDays(-1));
+            rqrightsDb.UpdateExecutors(glpiRequests);
         }
     }
 }
