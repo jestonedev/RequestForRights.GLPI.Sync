@@ -229,7 +229,7 @@ namespace RequestForRights.GLPI.Sync
                             IdResourceResponsibleDepartment = 3
                             };
                         if (currentRight.ResourceName == "Учетная запись пользователя" &&
-                            currentRequest.HasResourceResponsibleDepartment(cmtDep))
+                            !currentRequest.HasResourceResponsibleDepartment(cmtDep))
                         {
                             currentRequest.ResourceResponsibleDepartments.Add(cmtDep);
                         }
