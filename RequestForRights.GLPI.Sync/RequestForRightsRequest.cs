@@ -20,6 +20,14 @@ namespace RequestForRights.GLPI.Sync
             foreach(var user in RequestForRightsUsers)
             {
                 description += "&lt;b&gt;Сотрудник:&lt;/b&gt; " + user.Snp + "&lt;br/&gt;";
+                if (!string.IsNullOrEmpty(user.Department))
+                {
+                    description += "&lt;b&gt;Организация:&lt;/b&gt; " + user.Department + "&lt;br/&gt;";
+                }
+                if (!string.IsNullOrEmpty(user.Unit))
+                {
+                    description += "&lt;b&gt;Отдел:&lt;/b&gt; " + user.Unit + "&lt;br/&gt;";
+                }
                 if (!string.IsNullOrEmpty(user.Post))
                 {
                     description += "&lt;b&gt;Должность:&lt;/b&gt; " + user.Post + "&lt;br/&gt;";
