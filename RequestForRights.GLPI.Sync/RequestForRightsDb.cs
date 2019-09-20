@@ -37,7 +37,7 @@ namespace RequestForRights.GLPI.Sync
                       COALESCE('.&lt;br/$gt;'+rua.Description, '') AS RequestUserDescription,    
                       COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
                       COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
-                      COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, ru.Unit
+                      COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit
                       FROM Requests r 
                         INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
                         LEFT JOIN DelegationRequestUsersExtInfo druei ON rua.IdRequestUserAssoc = druei.IdRequestUserAssoc
@@ -55,7 +55,7 @@ namespace RequestForRights.GLPI.Sync
                     COALESCE(rua.Description, '') AS RequestUserDescription,    
                       COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
                       COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
-                      COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, ru.Unit
+                      COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit
                       FROM Requests r 
                         INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
                         INNER JOIN RequestUsers ru ON rua.IdRequestUser = ru.IdRequestUser
@@ -70,7 +70,7 @@ namespace RequestForRights.GLPI.Sync
                          ru.IdRequestUser, ru.Snp, COALESCE(ru.Post, '') AS Post, COALESCE(ru.Phone, '') AS Phone, ru.Department,
                           COALESCE(rua.Description, '') AS RequestUserDescription, COALESCE(v.ResourceRightDescription, '') AS ResourceRightDescription, 
                           COALESCE(v.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
-                          COALESCE(v.ResourceResponsibleDepartment, '') AS ResourceResponsibleDepartment, ru.Unit
+                          COALESCE(v.ResourceResponsibleDepartment, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit
                       FROM (
                       SELECT rs.IdRequest, MIN(rs.Date) AS CreateDate
                       FROM RequestStates rs
