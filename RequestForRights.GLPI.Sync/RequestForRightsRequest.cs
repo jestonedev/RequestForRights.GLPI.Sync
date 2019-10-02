@@ -44,6 +44,10 @@ namespace RequestForRights.GLPI.Sync
                 description += "&lt;br/&gt;";
                 foreach (var right in user.RequestForRightsRights)
                 {
+                    if (IdRequestType == 2)
+                    {
+                        description += "&lt;b&gt;Действие:&lt;/b&gt; " + right.RequestRightGrantType + "&lt;br/&gt;";
+                    }
                     description += "&lt;b&gt;Ресурс:&lt;/b&gt; " + right.ResourceName + "&lt;br/&gt;";
                     description += "&lt;b&gt;Право:&lt;/b&gt; " + right.ResourceRightName + "&lt;br/&gt;";
                     if (!string.IsNullOrEmpty(right.ResourceRightDescription))
