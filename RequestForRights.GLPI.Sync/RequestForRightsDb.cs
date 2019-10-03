@@ -34,7 +34,7 @@ namespace RequestForRights.GLPI.Sync
           COALESCE(', тел. ' + rud.Phone + ', ', '') + 
           ' на период с '+CONVERT(VARCHAR, druei.DelegateFromDate, 104) +
           COALESCE(' по '+CONVERT(VARCHAR, druei.DelegateToDate, 104), 'бессрочно') +
-          COALESCE('.&lt;br/$gt;'+rua.Description, '') AS RequestUserDescription,    
+          COALESCE('.&lt;br/&gt;'+rua.Description, '') AS RequestUserDescription,    
           COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
           COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
           COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit,
