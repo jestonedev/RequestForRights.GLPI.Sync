@@ -241,6 +241,13 @@ namespace RequestForRights.GLPI.Sync
                             currentRequest.ResourceResponsibleDepartments.Add(cmtDep);
                         }
                     }
+                    if (currentRequest.IdRequestType == 3 && !currentRequest.ResourceResponsibleDepartments.Any())
+                    {
+                        currentRequest.ResourceResponsibleDepartments.AddRange(new[] {
+                            new RequestForRightsResourceResponsibleDepartment { IdResourceResponsibleDepartment = 3 },
+                            new RequestForRightsResourceResponsibleDepartment { IdResourceResponsibleDepartment = 2 }
+                        });
+                    }
                 }
             }
 
