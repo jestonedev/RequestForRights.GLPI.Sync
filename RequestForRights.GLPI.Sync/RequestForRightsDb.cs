@@ -213,7 +213,8 @@ namespace RequestForRights.GLPI.Sync
                             throw new ApplicationException("RequestForRightsDb.GetRequestsOnExecution: Несогласованность данных в запросах");
                         }
                         var idRequestUser = reader.GetInt32(3);
-                        var currentUser = currentRequest.RequestForRightsUsers.FirstOrDefault(r => r.IdRequestUser == idRequestUser);
+                        var requestUserDescription = reader.GetString(8);
+                        var currentUser = currentRequest.RequestForRightsUsers.FirstOrDefault(r => r.IdRequestUser == idRequestUser && r.Description == requestUserDescription);
                         var currentRight = ReadCurrentRightFromSqlDataReader(reader);
                         if (currentUser == null)
                         {
