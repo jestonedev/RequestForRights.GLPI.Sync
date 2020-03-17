@@ -31,7 +31,11 @@ namespace RequestForRights.GLPI.Sync
             var glpiRequestsForCompleteChecking = rqrightsRequests.Except(glpiNotExistsRequests);
             var glpiCompletedRequest = glpiDb.GetRequests(null, 
                 glpiRequestsForCompleteChecking.Select(r => (long)r.IdRequest).ToList(), new List<int> { 5, 6 });
-            rqrightsDb.UpdateRequestsState(glpiCompletedRequest.Select(r => r.IdRequestForRightsRequest).ToList(), 4);
+            var glpiCanceledRequests = glpiDb.GetRequests(null,
+                glpiRequestsForCompleteChecking.Select(r => (long)r.IdRequest).ToList(), new List<int> { 5, 6 }, null, true);
+            rqrightsDb.UpdateRequestsState(
+                glpiCompletedRequest.Select(r => r.IdRequestForRightsRequest).Except(glpiCanceledRequests.Select(r => r.IdRequestForRightsRequest)).ToList(), 4);
+            rqrightsDb.UpdateRequestsState(glpiCanceledRequests.Select(r => r.IdRequestForRightsRequest).ToList(), 5);
             var glpiRequests = glpiDb.GetRequests(createionDate: DateTime.Now.AddDays(-1));
             rqrightsDb.UpdateExecutors(glpiRequests);
         }

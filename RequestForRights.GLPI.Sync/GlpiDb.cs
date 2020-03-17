@@ -171,12 +171,12 @@ namespace RequestForRights.GLPI.Sync
             }
         }
 
-        public List<GlpiRequest> GetRequests(List<long> glpiIds = null, List<long> rqrightsIds = null, List<int> statusIds = null, DateTime? createionDate = null)
+        public List<GlpiRequest> GetRequests(List<long> glpiIds = null, List<long> rqrightsIds = null, List<int> statusIds = null, DateTime? createionDate = null, bool onlyCanceled = false)
         {
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
-                var where = GetRequestsBuildWhere(glpiIds, rqrightsIds, statusIds, createionDate);
+                var where = GetRequestsBuildWhere(glpiIds, rqrightsIds, statusIds, createionDate, onlyCanceled);
                 var getTicketCommand = new MySqlCommand(string.Format(GetTicketsQueryTemplate, where), connection);
                 var reader = getTicketCommand.ExecuteReader();
                 var requests = new List<GlpiRequest>();
@@ -271,7 +271,7 @@ namespace RequestForRights.GLPI.Sync
             };
         }
 
-        private string GetRequestsBuildWhere(List<long> glpiIds = null, List<long> rqRightsIds = null, List<int> statusIds = null, DateTime? createionDate = null)
+        private string GetRequestsBuildWhere(List<long> glpiIds = null, List<long> rqRightsIds = null, List<int> statusIds = null, DateTime? createionDate = null, bool onlyCanceled = false)
         {
             var where = "";
             if (glpiIds != null)
@@ -290,6 +290,13 @@ namespace RequestForRights.GLPI.Sync
             if (createionDate != null)
             {
                 where += " AND gt.date_creation > STR_TO_DATE('" + createionDate.Value.ToString("dd.MM.yyyy hh:mm:ss") + "', '%d.%m.%Y %H:%i:%s')";
+            }
+            if (onlyCanceled)
+            {
+                where += @" AND  EXISTS(
+                    SELECT *
+                    FROM glpi_itilsolutions gi1
+                    WHERE gi1.itemtype = 'Ticket' AND gi1.items_id = gt.id AND gi1.status IN(2, 3) AND gi1.solutiontypes_id = 2)";
             }
             if (string.IsNullOrEmpty(where)) return "AND 1=0";
             return where;
