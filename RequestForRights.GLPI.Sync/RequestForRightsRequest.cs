@@ -28,6 +28,10 @@ namespace RequestForRights.GLPI.Sync
                 {
                     description += "&lt;b&gt;Отдел:&lt;/b&gt; " + user.Unit + "&lt;br/&gt;";
                 }
+                if (!string.IsNullOrEmpty(user.Office))
+                {
+                    description += "&lt;b&gt;Кабинет:&lt;/b&gt; " + user.Office + "&lt;br/&gt;";
+                }
                 if (!string.IsNullOrEmpty(user.Post))
                 {
                     description += "&lt;b&gt;Должность:&lt;/b&gt; " + user.Post + "&lt;br/&gt;";

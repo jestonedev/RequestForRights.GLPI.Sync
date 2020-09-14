@@ -38,7 +38,8 @@ namespace RequestForRights.GLPI.Sync
           COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
           COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
           COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit,
-          rrgt.Name AS RequestRightGrantType
+          rrgt.Name AS RequestRightGrantType,
+          COALESCE(ru.Office, '') AS Office
           FROM Requests r 
             INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
             LEFT JOIN DelegationRequestUsersExtInfo druei ON rua.IdRequestUserAssoc = druei.IdRequestUserAssoc
@@ -58,7 +59,8 @@ namespace RequestForRights.GLPI.Sync
           COALESCE(rura.Descirption, '') AS ResourceRightDescription, 
           COALESCE(rs.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
           COALESCE(rrd.Name, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit,
-          rrgt.Name AS RequestRightGrantType
+          rrgt.Name AS RequestRightGrantType,
+          COALESCE(ru.Office, '') AS Office
           FROM Requests r 
             INNER JOIN RequestUserAssocs rua ON r.IdRequest = rua.IdRequest
             INNER JOIN RequestUsers ru ON rua.IdRequestUser = ru.IdRequestUser
@@ -75,7 +77,8 @@ namespace RequestForRights.GLPI.Sync
               COALESCE(rua.Description, '') AS RequestUserDescription, COALESCE(v.ResourceRightDescription, '') AS ResourceRightDescription, 
               COALESCE(v.IdResourceResponsibleDepartment, 0) AS IdResourceResponsibleDepartment, 
               COALESCE(v.ResourceResponsibleDepartment, '') AS ResourceResponsibleDepartment, COALESCE(ru.Unit, '') AS Unit,
-          'Забрать право' AS RequestRightGrantType
+          'Забрать право' AS RequestRightGrantType,
+          COALESCE(ru.Office, '') AS Office
           FROM (
           SELECT rs.IdRequest, MIN(rs.Date) AS CreateDate
           FROM RequestStates rs
@@ -169,7 +172,8 @@ namespace RequestForRights.GLPI.Sync
                 Phone = reader.GetString(6),
                 Department = reader.GetString(7),
                 Unit = reader.GetString(12),
-                Description = reader.GetString(8)
+                Description = reader.GetString(8),
+                Office = reader.GetString(14)
             };
         }
 
