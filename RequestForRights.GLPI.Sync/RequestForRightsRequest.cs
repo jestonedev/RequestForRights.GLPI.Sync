@@ -42,7 +42,7 @@ namespace RequestForRights.GLPI.Sync
                 }
                 if (!string.IsNullOrEmpty(user.Description))
                 {
-                    description += "&lt;b&gt;Примечание:&lt;/b&gt; " + user.Description + "&lt;br/&gt;";
+                    description += "&lt;b&gt;Примечание:&lt;/b&gt; &lt;span style='color:red'&gt;" + user.Description + "&lt;/span&gt;&lt;br/&gt;";
                 }
 
                 description += "&lt;br/&gt;";
