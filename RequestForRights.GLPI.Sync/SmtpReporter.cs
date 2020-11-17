@@ -41,7 +41,7 @@ namespace RequestForRights.GLPI.Sync
         {
             var body = "";
 
-            body += string.Format("<div>GLPI URL: <a href=\"http://glpi/index.php?redirect=ticket_{0}\">http://glpi/index.php?redirect=ticket_{0}</a></div>", request.IdGlpiRequest);
+            body += string.Format("<div>GLPI URL: <a href=\"http://glpi.mcs.br/index.php?redirect=ticket_{0}\">http://glpi.mcs.br/index.php?redirect=ticket_{0}</a></div>", request.IdGlpiRequest);
             body += "<p class=\"description\"><strong>Заявка: Описание</strong></p>";
             body += string.Format("<p><span style=\"color: #8b8c8f; font-weight: bold; text-decoration: underline;\">Заголовок</span>: {0}<br />",
                 request.Name);
