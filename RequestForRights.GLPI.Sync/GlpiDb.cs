@@ -45,7 +45,8 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string GetTicketsQueryTemplate = @"SELECT gt.id AS id_glpi_ticket, ugrra.id_rqrights_request,
                       IFNULL(gt.name, '') AS name, IFNULL(gt.content, '') AS content, 
                       IFNULL(gt.date, gt.date_creation) AS date, gi.completename AS category, TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS inititator,
-                      IFNULL(GROUP_CONCAT(gg.completename SEPARATOR ', '), '') AS executors_groups
+                      IFNULL(GROUP_CONCAT(gg.completename SEPARATOR ', '), '') AS executors_groups,
+                        gis.content AS solution, gis.snp AS complete_user_snp, gis.name AS complete_user_login
                     FROM glpi_tickets gt
                     INNER JOIN udt_glpi_rqrights_request_assoc ugrra ON gt.id = ugrra.id_glpi_ticket
                       LEFT JOIN glpi_tickets_users gtu ON gt.id = gtu.tickets_id
@@ -53,6 +54,13 @@ namespace RequestForRights.GLPI.Sync
                       LEFT JOIN glpi_groups_tickets ggt ON gt.id = ggt.tickets_id
                       LEFT JOIN glpi_groups gg ON ggt.groups_id = gg.id
                       INNER JOIN glpi_itilcategories gi ON gt.itilcategories_id = gi.id
+                      LEFT JOIN (SELECT gi.items_id, gi.content,
+                                 TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS snp,
+                                 gu.name
+                                 FROM glpi_itilsolutions gi
+                                 JOIN glpi_users gu ON gi.users_id = gu.id
+                    WHERE gi.status IN(2,3) AND gi.itemtype = 'Ticket'
+                    GROUP BY gi.items_id) gis ON gt.id = gis.items_id
                     WHERE gtu.type = 1 AND ggt.type = 2 {0}
                     GROUP BY gt.id";
 
@@ -266,6 +274,9 @@ namespace RequestForRights.GLPI.Sync
                 Cateogry = reader.GetString(5),
                 Initiator = reader.GetString(6),
                 ExecutorsGroups = reader.GetString(7),
+                CompleteDescription = reader.GetString(8),
+                CompleteUserSnp = reader.GetString(9),
+                CompleteUserLogin = reader.GetString(10),
                 Executors = new List<GlpiRequestExecutor>(),
                 Managers = new List<GlpiRequestManager>()
             };

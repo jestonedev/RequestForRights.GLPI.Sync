@@ -4,6 +4,7 @@ using System.Configuration;
 using System.Text;
 using System.Data.SqlClient;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace RequestForRights.GLPI.Sync
 {
@@ -259,17 +260,53 @@ namespace RequestForRights.GLPI.Sync
             return requests;
         }
 
-        public void UpdateRequestsState(List<int> idRequests, int idRequestStateType)
+        public void UpdateRequestsState(List<GlpiRequest> requests, int idRequestStateType)
         {
             using (var connection = new SqlConnection(_connectionString))
             {
                 connection.Open();
                 var transaction = connection.BeginTransaction();
-                foreach (var idRequest in idRequests)
+                foreach (var request in requests)
                 {
+                    if (idRequestStateType == 5)
+                    {
+                        request.CompleteDescription = Regex.Replace(request.CompleteDescription, "&lt;.+?&gt;", "");
+
+                        var userIdCommand = new SqlCommand("SELECT au.IdUser FROM AclUsers au WHERE au.Deleted <> 1 AND au.Login = @login", connection, transaction);
+                        userIdCommand.Parameters.AddWithValue("login", "pwr\\" + request.CompleteUserLogin.ToLowerInvariant());
+                        var userIdObj = userIdCommand.ExecuteScalar();
+                        var userId = -1;
+                        if (userIdObj == null)
+                        {
+                            var addUserCommand = new SqlCommand("INSERT INTO AclUsers(Login, IdDepartment, Snp) VALUES(@login, 24, @snp)", connection, transaction);
+                            addUserCommand.Parameters.AddWithValue("login", "pwr\\" + request.CompleteUserLogin.ToLowerInvariant());
+                            addUserCommand.Parameters.AddWithValue("snp", "pwr\\" + request.CompleteUserSnp.ToLowerInvariant());
+                            addUserCommand.ExecuteNonQuery();
+
+                            userId = (int)userIdCommand.ExecuteScalar();
+
+                            var addUserRightsCommand = new SqlCommand("INSERT INTO AclUserAclRoles(IdUser, IdRole) VALUES(@idUser, @idRole)", connection, transaction);
+                            addUserRightsCommand.Parameters.AddWithValue("idUser", userId);
+                            addUserRightsCommand.Parameters.AddWithValue("idRole", 6);
+                            addUserRightsCommand.ExecuteNonQuery();
+                        }
+                        else
+                            userId = (int)userIdObj;
+
+
+                        var addAgreementCommand = new SqlCommand(
+                            "INSERT INTO RequestAgreements(AgreementDescription, AgreementDate, IdUser, IdRequest, IdAgreementState, IdAgreementType) VALUES(@description, @date, @idUser, @idReqeust, 3, 2)",
+                                connection, transaction);
+                        addAgreementCommand.Parameters.AddWithValue("description", request.CompleteDescription);
+                        addAgreementCommand.Parameters.AddWithValue("date", DateTime.Now);
+                        addAgreementCommand.Parameters.AddWithValue("idUser", userId);
+                        addAgreementCommand.Parameters.AddWithValue("idReqeust", request.IdRequestForRightsRequest);
+                        addAgreementCommand.ExecuteNonQuery();
+                    }
+
                     var command = new SqlCommand(UpdateRequestStateQueryTemplate, connection, transaction);
                     command.Parameters.AddWithValue("idRequestStateType", idRequestStateType);
-                    command.Parameters.AddWithValue("idRequest", idRequest);
+                    command.Parameters.AddWithValue("idRequest", request.IdRequestForRightsRequest);
                     command.ExecuteNonQuery();
                 }
                 transaction.Commit();

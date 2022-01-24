@@ -13,6 +13,9 @@ namespace RequestForRights.GLPI.Sync
         public string Cateogry { get; set; }
         public string Initiator { get; set; }
         public string ExecutorsGroups { get; set; }
+        public string CompleteDescription { get; set; }
+        public string CompleteUserSnp { get; set; }
+        public string CompleteUserLogin { get; set; }
         public List<GlpiRequestExecutor> Executors { get; set; }
         public List<GlpiRequestManager> Managers { get; set; }
     }
