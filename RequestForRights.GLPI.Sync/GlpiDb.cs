@@ -46,7 +46,9 @@ namespace RequestForRights.GLPI.Sync
                       IFNULL(gt.name, '') AS name, IFNULL(gt.content, '') AS content, 
                       IFNULL(gt.date, gt.date_creation) AS date, gi.completename AS category, TRIM(CONCAT(IFNULL(gu.realname, ''), ' ', IFNULL(gu.firstname, ''))) AS inititator,
                       IFNULL(GROUP_CONCAT(gg.completename SEPARATOR ', '), '') AS executors_groups,
-                        gis.content AS solution, gis.snp AS complete_user_snp, gis.name AS complete_user_login
+                      IFNULL(gis.content, '') AS solution, 
+                      IFNULL(gis.snp,'') AS complete_user_snp, 
+                      IFNULL(gis.name, '') AS complete_user_login
                     FROM glpi_tickets gt
                     INNER JOIN udt_glpi_rqrights_request_assoc ugrra ON gt.id = ugrra.id_glpi_ticket
                       LEFT JOIN glpi_tickets_users gtu ON gt.id = gtu.tickets_id
