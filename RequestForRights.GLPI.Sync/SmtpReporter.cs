@@ -84,8 +84,8 @@ namespace RequestForRights.GLPI.Sync
             if (!string.IsNullOrWhiteSpace(body))
             {
                 body = "<b>Перечень запросов:</b>" + body;
+                SendMail(subject, body, smtpToEmails);
             }
-            SendMail(subject, body, smtpToEmails);
         }
 
         public string BuildMailTitleForNewGlpiRequest(GlpiRequest request)
