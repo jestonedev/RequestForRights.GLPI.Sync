@@ -24,6 +24,7 @@ namespace RequestForRights.GLPI.Sync
                 var mailTitle = smtpReporter.BuildMailTitleForNewGlpiRequest(request);
                 smtpReporter.SendMail(mailTitle, mailBody, request.Managers.Select(r => r.Email).ToList());
             }
+            smtpReporter.SendMailToSmevExecutor(glpiNotExistsRequests, ConfigurationManager.AppSettings["smtpSmevTo"].Split(",").ToList());
             if (ConfigurationManager.AppSettings["oneWaySync"] == "1")
             {
                 return;

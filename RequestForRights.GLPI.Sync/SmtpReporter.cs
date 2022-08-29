@@ -61,6 +61,33 @@ namespace RequestForRights.GLPI.Sync
             return body;
         }
 
+        internal void SendMailToSmevExecutor(List<RequestForRightsRequest> requests, List<string> smtpToEmails)
+        {
+            var body = "";
+            var subject = "Подключение/отключение сотрудников к СМЭВ (smart-route)";
+            foreach (var request in requests) {
+                foreach(var user in request.RequestForRightsUsers)
+                {
+                    foreach(var right in user.RequestForRightsRights)
+                    {
+                        if (right.IdResource == 288)
+                        {
+                            body += string.Format("<br><span style=\"text-decoration: underline;\">{0}</span> {1} {2} ({3}).", right.RequestRightGrantType,
+                                right.RequestRightGrantType == "Забрать право" ? "у сотрудника" : "сотруднику",  user.Snp, user.Department);
+
+                            if (!string.IsNullOrWhiteSpace(right.ResourceRightDescription))
+                                body += string.Format(" Примечание к праву: <span style=\"color: red\">{0}</span>.", right.ResourceRightDescription);
+                        }
+                    }
+                }
+            }
+            if (!string.IsNullOrWhiteSpace(body))
+            {
+                body = "<b>Перечень запросов:</b>" + body;
+            }
+            SendMail(subject, body, smtpToEmails);
+        }
+
         public string BuildMailTitleForNewGlpiRequest(GlpiRequest request)
         {
             return string.Format("[GLPI #{0}] Новая заявка {1}", request.IdGlpiRequest.ToString("D7"), request.Name);
