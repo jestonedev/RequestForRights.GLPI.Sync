@@ -13,8 +13,9 @@ namespace RequestForRights.GLPI.Sync
             var rqrightsRequests = rqrightsDb.GetRequestsOnExecution();
             var glpiDb = new GlpiDb(ConfigurationManager.AppSettings["glpiConnectionString"]);
             var glpiNotExistsRequests = glpiDb.FilterExistsRequests(rqrightsRequests);
-            var glpiInsertedRequestsIds = glpiDb.InsertRequests(glpiNotExistsRequests);
-            var glpiInsertedRequests = glpiDb.GetRequests(glpiInsertedRequestsIds);
+            var glpiInsertedRequestsAssoc = glpiDb.InsertRequests(glpiNotExistsRequests);
+            rqrightsDb.InsertRequestsAssoc(glpiInsertedRequestsAssoc);
+            var glpiInsertedRequests = glpiDb.GetRequests(glpiInsertedRequestsAssoc.Select(r => r.Item2).ToList());
             var smtpReporter = new SmtpReporter(ConfigurationManager.AppSettings["smtpHost"],
                 int.Parse(ConfigurationManager.AppSettings["smtpPort"]),
                 ConfigurationManager.AppSettings["smtpFrom"]);

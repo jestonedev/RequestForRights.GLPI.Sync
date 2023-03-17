@@ -111,6 +111,9 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string DeleteRequestExecutorsQueryTemplate = @"DELETE FROM RequestExecutors WHERE IdRequest = @IdRequest";
         private static readonly string InsertRequestExecutorQueryTemplate = @"INSERT INTO RequestExecutors(IdRequest, Login) VALUES(@IdRequest, @Login)";
 
+
+        private static readonly string InsertRequestAssocQueryTemplate = @"INSERT INTO RequestsGlpiAssoc(IdRequest, IdGlpiTicket) VALUES(@idRequest, @idGlpiTicket);";
+
         public void UpdateExecutors(List<GlpiRequest> glpiRequests)
         {
             using (var connection = new SqlConnection(_connectionString))
@@ -312,6 +315,23 @@ namespace RequestForRights.GLPI.Sync
                     var command = new SqlCommand(UpdateRequestStateQueryTemplate, connection, transaction);
                     command.Parameters.AddWithValue("idRequestStateType", idRequestStateType);
                     command.Parameters.AddWithValue("idRequest", request.IdRequestForRightsRequest);
+                    command.ExecuteNonQuery();
+                }
+                transaction.Commit();
+            }
+        }
+
+        public void InsertRequestsAssoc(List<Tuple<long, long>> glpiInsertedRequestsAssoc)
+        {
+            using (var connection = new SqlConnection(_connectionString))
+            {
+                connection.Open();
+                var transaction = connection.BeginTransaction();
+                foreach (var requestAssoc in glpiInsertedRequestsAssoc)
+                {
+                    var command = new SqlCommand(InsertRequestAssocQueryTemplate, connection, transaction);
+                    command.Parameters.AddWithValue("idRequest", requestAssoc.Item1);
+                    command.Parameters.AddWithValue("idGlpiTicket", requestAssoc.Item2);
                     command.ExecuteNonQuery();
                 }
                 transaction.Commit();

@@ -113,9 +113,9 @@ namespace RequestForRights.GLPI.Sync
             }
         }
 
-        public List<long> InsertRequests(List<RequestForRightsRequest> requests)
+        public List<Tuple<long, long>> InsertRequests(List<RequestForRightsRequest> requests)
         {
-            var insertedTicketsIds = new List<long>();
+            var insertedTicketsIds = new List<Tuple<long, long>>();
             using (var connection = new MySqlConnection(_connectionString))
             {
                 connection.Open();
@@ -154,7 +154,7 @@ namespace RequestForRights.GLPI.Sync
                                 insertTicketExecutorGroups.ExecuteNonQuery();
                             }
 
-                            insertedTicketsIds.Add(lastInsertedId);
+                            insertedTicketsIds.Add(new Tuple<long, long>(request.IdRequest, lastInsertedId));
                         }
                     } catch(MySqlException)
                     {
