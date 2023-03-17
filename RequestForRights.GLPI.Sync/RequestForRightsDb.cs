@@ -112,7 +112,7 @@ namespace RequestForRights.GLPI.Sync
         private static readonly string InsertRequestExecutorQueryTemplate = @"INSERT INTO RequestExecutors(IdRequest, Login) VALUES(@IdRequest, @Login)";
 
 
-        private static readonly string InsertRequestAssocQueryTemplate = @"INSERT INTO RequestsGlpiAssoc(IdRequest, IdGlpiTicket) VALUES(@idRequest, @idGlpiTicket);";
+        private static readonly string InsertRequestAssocQueryTemplate = @"INSERT INTO RequestGlpiAssocs(IdRequest, IdGlpiTicket) VALUES(@idRequest, @idGlpiTicket);";
 
         public void UpdateExecutors(List<GlpiRequest> glpiRequests)
         {
